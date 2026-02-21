@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: 'ustoz-support-api',
-      script: 'dist/src/main.js',
+      script: 'dist/main.js',
       instances: 1,
       exec_mode: 'fork',
       max_memory_restart: '300M',
