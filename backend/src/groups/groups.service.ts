@@ -20,4 +20,8 @@ export class GroupsService {
   remove(id: string, userId: string) {
     return this.prisma.group.deleteMany({ where: { id, userId } });
   }
+
+  clear(userId: string) {
+    return this.prisma.group.deleteMany({ where: { userId } });
+  }
 }

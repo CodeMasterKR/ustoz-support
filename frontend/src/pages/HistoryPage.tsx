@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { Clock, BookOpen, FlaskConical, Gamepad2, PenLine, House, Trash2, Plus, ChevronRight, ArrowLeft } from 'lucide-react'
 import { clsx } from 'clsx'
@@ -42,8 +42,16 @@ export function HistoryPage() {
   const [searchParams] = useSearchParams()
   const typeFilter = searchParams.get('type') as ContentType | null
 
-  const [history, setHistory] = useState<GeneratedContent[]>(() => loadHistory())
+  const [history,    setHistory]    = useState<GeneratedContent[]>([])
+  const [loading,    setLoading]    = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  useEffect(() => {
+    setLoading(true)
+    loadHistory()
+      .then(setHistory)
+      .finally(() => setLoading(false))
+  }, [])
 
   const displayed = typeFilter
     ? history.filter((item) => item.request.contentTypes.includes(typeFilter))
@@ -52,15 +60,25 @@ export function HistoryPage() {
   const pageTitle = typeFilter ? (TYPE_TITLES[typeFilter] ?? 'Materiallar') : 'Tarix'
   const meta      = typeFilter ? TYPE_META[typeFilter] : null
 
-  const handleDelete = (e: React.MouseEvent, id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
-    deleteContent(id)
+    await deleteContent(id)
     setHistory((h) => h.filter((item) => item.id !== id))
     setDeletingId(null)
   }
 
   const handleOpen = (item: GeneratedContent) => {
     navigate('/results', { state: { content: item } })
+  }
+
+  if (loading) {
+    return (
+      <div className="animate-fade-up max-w-2xl mx-auto">
+        <div className="flex items-center justify-center py-20">
+          <span className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
   }
 
   if (displayed.length === 0) {
@@ -211,7 +229,7 @@ export function HistoryPage() {
       </div>
 
       <p className="text-center text-xs text-gray-400 mt-4">
-        So'nggi 40 ta material saqlanadi
+        So'nggi materiallar serverda saqlanadi
       </p>
     </div>
   )

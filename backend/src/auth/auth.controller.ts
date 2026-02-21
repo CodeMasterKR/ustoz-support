@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Get, Patch, Body, UseGuards, Request } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt.guard';
@@ -21,6 +21,18 @@ export class AuthController {
   @Post('refresh')
   refresh(@Body() body: { refreshToken: string }) {
     return this.auth.refresh(body.refreshToken);
+  }
+
+  @Post('google')
+  googleLogin(@Body() body: { googleId: string; name: string; email: string }) {
+    return this.auth.googleLogin(body.googleId, body.name, body.email);
+  }
+
+  @Patch('password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  changePassword(@Request() req, @Body() body: { oldPassword: string; newPassword: string }) {
+    return this.auth.changePassword(req.user.userId, body.oldPassword, body.newPassword);
   }
 
   @Get('me')

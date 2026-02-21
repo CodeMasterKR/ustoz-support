@@ -1,36 +1,32 @@
+import { api } from '@/api/client'
+
 export interface Student {
   id: string
   name: string
   createdAt: string
+  groupId?: string | null
 }
 
-const KEY = 'ustoz_students'
-
-function uid() { return Math.random().toString(36).slice(2, 9) }
-
-export function loadStudents(): Student[] {
+export async function loadStudents(): Promise<Student[]> {
   try {
-    const raw = localStorage.getItem(KEY)
-    return raw ? (JSON.parse(raw) as Student[]) : []
+    return await api.get<Student[]>('/students')
   } catch {
     return []
   }
 }
 
-function persist(students: Student[]) {
-  localStorage.setItem(KEY, JSON.stringify(students))
+export async function addStudent(name: string): Promise<Student> {
+  return api.post<Student>('/students', { name: name.trim() })
 }
 
-export function addStudent(name: string): Student {
-  const s: Student = { id: uid(), name: name.trim(), createdAt: new Date().toISOString() }
-  persist([s, ...loadStudents()])
-  return s
+export async function deleteStudent(id: string): Promise<void> {
+  await api.delete(`/students/${id}`)
 }
 
-export function deleteStudent(id: string): void {
-  persist(loadStudents().filter((s) => s.id !== id))
+export async function updateStudent(id: string, name: string): Promise<void> {
+  await api.patch(`/students/${id}`, { name: name.trim() })
 }
 
-export function updateStudent(id: string, name: string): void {
-  persist(loadStudents().map((s) => (s.id === id ? { ...s, name: name.trim() } : s)))
+export async function clearStudents(): Promise<void> {
+  await api.delete('/students/clear')
 }

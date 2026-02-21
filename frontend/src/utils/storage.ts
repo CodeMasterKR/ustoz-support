@@ -1,38 +1,51 @@
-import type { GeneratedContent } from '@/types'
+import { api } from '@/api/client'
+import type { GeneratedContent, ContentType } from '@/types'
 
-const KEY = 'ustoz_history'
+interface HistoryRecord {
+  id: string
+  topic: string
+  language: string
+  types: string[]
+  result: Record<string, unknown>
+  createdAt: string
+}
 
-type Serialized = Omit<GeneratedContent, 'createdAt'> & { createdAt: string }
-
-export function saveContent(content: GeneratedContent) {
-  try {
-    const history = loadHistory()
-    const updated = [serialize(content), ...history.filter((h) => h.id !== content.id)].slice(0, 40)
-    localStorage.setItem(KEY, JSON.stringify(updated))
-  } catch {
-    // ignore storage errors
+function recordToContent(h: HistoryRecord): GeneratedContent {
+  return {
+    id: h.id,
+    request: {
+      topic: h.topic,
+      language: h.language as 'uz' | 'ru' | 'en',
+      contentTypes: h.types as ContentType[],
+    },
+    ...(h.result as Omit<GeneratedContent, 'id' | 'request' | 'createdAt'>),
+    createdAt: new Date(h.createdAt),
   }
 }
 
-export function loadHistory(): GeneratedContent[] {
+export async function saveContent(content: GeneratedContent): Promise<void> {
+  const { id: _id, request, createdAt: _createdAt, ...rest } = content
+  await api.post('/history', {
+    topic: request.topic,
+    language: request.language,
+    types: request.contentTypes,
+    result: rest,
+  })
+}
+
+export async function loadHistory(): Promise<GeneratedContent[]> {
   try {
-    const raw = localStorage.getItem(KEY)
-    if (!raw) return []
-    return (JSON.parse(raw) as Serialized[]).map(deserialize)
+    const records = await api.get<HistoryRecord[]>('/history')
+    return records.map(recordToContent)
   } catch {
     return []
   }
 }
 
-export function deleteContent(id: string) {
-  const updated = loadHistory().filter((h) => h.id !== id)
-  localStorage.setItem(KEY, JSON.stringify(updated.map(serialize)))
+export async function deleteContent(id: string): Promise<void> {
+  await api.delete(`/history/${id}`)
 }
 
-function serialize(c: GeneratedContent): Serialized {
-  return { ...c, createdAt: c.createdAt.toISOString() }
-}
-
-function deserialize(c: Serialized): GeneratedContent {
-  return { ...c, createdAt: new Date(c.createdAt) }
+export async function clearHistory(): Promise<void> {
+  await api.delete('/history/clear')
 }

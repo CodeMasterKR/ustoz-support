@@ -19,8 +19,13 @@ export class StudentsController {
   }
 
   @Patch(':id')
-  update(@Request() req, @Param('id') id: string, @Body() body: { name?: string; groupId?: string }) {
+  update(@Request() req, @Param('id') id: string, @Body() body: { name?: string; groupId?: string | null }) {
     return this.students.update(id, req.user.userId, body);
+  }
+
+  @Delete('clear')
+  clear(@Request() req) {
+    return this.students.clear(req.user.userId);
   }
 
   @Delete(':id')

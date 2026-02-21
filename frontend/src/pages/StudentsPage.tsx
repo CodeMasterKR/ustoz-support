@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Users, Plus, Pencil, Trash2, Check, X, GraduationCap, UserPlus,
@@ -161,7 +161,6 @@ function StudentCard({
                       ? 'text-white'
                       : 'bg-gray-100 text-gray-500 hover:bg-gray-200',
                   )}
-                  style={inGroup ? undefined : undefined}
                 >
                   {inGroup && (
                     <span className={clsx('w-4 h-4 rounded-md flex items-center justify-center text-white text-[9px]', g.color)}>
@@ -193,9 +192,9 @@ function GroupCard({
   onRename: (id: string, name: string) => void
   onSetColor: (id: string, color: string) => void
 }) {
-  const [expanded, setExpanded] = useState(false)
-  const [editing, setEditing]   = useState(false)
-  const [editName, setEditName] = useState(group.name)
+  const [expanded, setExpanded]   = useState(false)
+  const [editing, setEditing]     = useState(false)
+  const [editName, setEditName]   = useState(group.name)
   const [deleteAsk, setDeleteAsk] = useState(false)
   const [showColors, setShowColors] = useState(false)
 
@@ -214,10 +213,8 @@ function GroupCard({
         className="p-4 flex items-center gap-3 cursor-pointer select-none"
         onClick={() => !editing && setExpanded((v) => !v)}
       >
-        {/* Color dot */}
         <div className={clsx('w-3 h-3 rounded-full flex-shrink-0', group.color)} />
 
-        {/* Name */}
         <div className="flex-1 min-w-0" onClick={(e) => editing && e.stopPropagation()}>
           {editing ? (
             <input
@@ -239,7 +236,6 @@ function GroupCard({
           )}
         </div>
 
-        {/* Member avatars preview */}
         {!editing && members.length > 0 && (
           <div className="flex -space-x-1.5 flex-shrink-0">
             {members.slice(0, 5).map((s) => (
@@ -258,7 +254,6 @@ function GroupCard({
           </div>
         )}
 
-        {/* Edit / confirm */}
         {editing ? (
           <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
             <button onClick={confirmRename}
@@ -278,8 +273,6 @@ function GroupCard({
       {/* Expanded content */}
       {expanded && (
         <div className="border-t border-gray-100 p-4 space-y-4">
-
-          {/* Quick actions */}
           <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setEditing(true)}
@@ -298,7 +291,6 @@ function GroupCard({
             </button>
           </div>
 
-          {/* Color picker */}
           {showColors && (
             <div className="flex gap-2 flex-wrap">
               {GROUP_COLORS.map((c) => (
@@ -315,7 +307,6 @@ function GroupCard({
             </div>
           )}
 
-          {/* Members list */}
           {members.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 mb-2">Guruh a'zolari</p>
@@ -337,7 +328,6 @@ function GroupCard({
             </div>
           )}
 
-          {/* Add students */}
           {nonMembers.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-gray-500 mb-2">
@@ -367,7 +357,6 @@ function GroupCard({
             </p>
           )}
 
-          {/* Delete group */}
           <div className="pt-1 border-t border-gray-100">
             {deleteAsk ? (
               <div className="flex items-center gap-2">
@@ -401,61 +390,85 @@ export function StudentsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tab = searchParams.get('tab') === 'groups' ? 'groups' : 'students'
 
-  const [students, setStudents] = useState<Student[]>(() => loadStudents())
-  const [groups,   setGroups]   = useState<Group[]>(() => loadGroups())
+  const [students, setStudents] = useState<Student[]>([])
+  const [groups,   setGroups]   = useState<Group[]>([])
+  const [loading,  setLoading]  = useState(true)
 
   // Students tab state
-  const [newName,   setNewName]   = useState('')
-  const [editId,    setEditId]    = useState<string | null>(null)
-  const [editName,  setEditName]  = useState('')
-  const [deleteId,  setDeleteId]  = useState<string | null>(null)
-  const [search,    setSearch]    = useState('')
+  const [newName,  setNewName]  = useState('')
+  const [editId,   setEditId]   = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [search,   setSearch]   = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Groups tab state
   const [newGroup, setNewGroup] = useState('')
 
+  const reload = useCallback(async () => {
+    const [s, g] = await Promise.all([loadStudents(), loadGroups()])
+    setStudents(s)
+    setGroups(g)
+  }, [])
+
+  useEffect(() => {
+    setLoading(true)
+    reload().finally(() => setLoading(false))
+  }, [reload])
+
   // ——— Student handlers ———
-  const handleAddStudent = () => {
+  const handleAddStudent = async () => {
     if (!newName.trim()) return
-    const s = addStudent(newName)
+    const s = await addStudent(newName)
     setStudents((prev) => [s, ...prev])
     setNewName('')
     inputRef.current?.focus()
   }
-  const handleDeleteStudent = (id: string) => {
-    deleteStudent(id)
+
+  const handleDeleteStudent = async (id: string) => {
+    await deleteStudent(id)
     setStudents((prev) => prev.filter((s) => s.id !== id))
-    // Remove student from all groups
-    setGroups(loadGroups())
+    const updatedGroups = await loadGroups()
+    setGroups(updatedGroups)
     setDeleteId(null)
   }
-  const confirmEdit = () => {
+
+  const confirmEdit = async () => {
     if (!editId || !editName.trim()) return
-    updateStudent(editId, editName)
+    await updateStudent(editId, editName)
     setStudents((prev) => prev.map((s) => s.id === editId ? { ...s, name: editName.trim() } : s))
     setEditId(null)
   }
 
   // ——— Group handlers ———
-  const handleAddGroup = () => {
+  const handleAddGroup = async () => {
     if (!newGroup.trim()) return
-    const g = addGroup(newGroup)
+    const g = await addGroup(newGroup)
     setGroups((prev) => [g, ...prev])
     setNewGroup('')
   }
-  const handleDeleteGroup = (id: string) => {
-    deleteGroup(id)
+
+  const handleDeleteGroup = async (id: string) => {
+    await deleteGroup(id)
     setGroups((prev) => prev.filter((g) => g.id !== id))
   }
-  const handleToggleStudent = (groupId: string, studentId: string) => {
-    toggleStudentInGroup(groupId, studentId)
-    setGroups(loadGroups())
+
+  const handleToggleStudent = async (groupId: string, studentId: string) => {
+    const group = groups.find((g) => g.id === groupId)
+    const isIn = group?.studentIds.includes(studentId) ?? false
+    await toggleStudentInGroup(groupId, studentId, isIn)
+    const updatedGroups = await loadGroups()
+    setGroups(updatedGroups)
+    // Also update students if student moved between groups
+    const updatedStudents = await loadStudents()
+    setStudents(updatedStudents)
   }
-  const handleRenameGroup = (id: string, name: string) => {
-    updateGroup(id, name)
+
+  const handleRenameGroup = async (id: string, name: string) => {
+    await updateGroup(id, name)
     setGroups((prev) => prev.map((g) => g.id === id ? { ...g, name } : g))
   }
+
   const handleSetColor = (id: string, color: string) => {
     setGroupColor(id, color)
     setGroups((prev) => prev.map((g) => g.id === id ? { ...g, color } : g))
@@ -464,6 +477,16 @@ export function StudentsPage() {
   const filtered = search.trim()
     ? students.filter((s) => s.name.toLowerCase().includes(search.toLowerCase()))
     : students
+
+  if (loading) {
+    return (
+      <div className="animate-fade-up max-w-2xl mx-auto">
+        <div className="flex items-center justify-center py-20">
+          <span className="w-6 h-6 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="animate-fade-up max-w-2xl mx-auto">
@@ -566,7 +589,6 @@ export function StudentsPage() {
             </div>
           )}
 
-          {/* Empty */}
           {students.length === 0 && (
             <div className="card p-12 text-center">
               <div className="w-16 h-16 bg-primary-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -577,7 +599,6 @@ export function StudentsPage() {
             </div>
           )}
 
-          {/* Search empty */}
           {students.length > 0 && filtered.length === 0 && (
             <div className="card p-8 text-center">
               <Search className="w-8 h-8 text-gray-300 mx-auto mb-2" />
@@ -585,7 +606,6 @@ export function StudentsPage() {
             </div>
           )}
 
-          {/* Student grid */}
           {filtered.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {filtered.map((student, idx) => (
@@ -621,7 +641,6 @@ export function StudentsPage() {
       {/* ===== GROUPS TAB ===== */}
       {tab === 'groups' && (
         <>
-          {/* Add group */}
           <div className="card p-4 mb-4">
             <p className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-teal-500" />
@@ -648,7 +667,6 @@ export function StudentsPage() {
             </div>
           </div>
 
-          {/* Empty groups */}
           {groups.length === 0 && (
             <div className="card p-12 text-center">
               <div className="w-16 h-16 bg-teal-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
@@ -661,7 +679,6 @@ export function StudentsPage() {
             </div>
           )}
 
-          {/* Groups list */}
           {groups.length > 0 && (
             <div className="space-y-2">
               {groups.map((group) => (

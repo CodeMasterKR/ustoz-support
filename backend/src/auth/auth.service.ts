@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ConflictException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ConflictException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
@@ -55,6 +55,35 @@ export class AuthService {
     } catch {
       throw new UnauthorizedException('Token muddati tugagan');
     }
+  }
+
+  async googleLogin(googleId: string, name: string, email: string) {
+    let user = await this.prisma.user.findUnique({ where: { googleId } });
+
+    if (!user) {
+      user = await this.prisma.user.findUnique({ where: { email } });
+      if (user) {
+        user = await this.prisma.user.update({ where: { id: user.id }, data: { googleId } });
+      } else {
+        user = await this.prisma.user.create({ data: { name, email, googleId } });
+      }
+    }
+
+    const tokens = await this.generateTokens(user.id, user.email);
+    await this.saveRefreshToken(user.id, tokens.refreshToken);
+    const { passwordHash, refreshToken, ...safeUser } = user;
+    return { user: safeUser, ...tokens };
+  }
+
+  async changePassword(userId: string, oldPassword: string, newPassword: string) {
+    if (newPassword.length < 6) throw new BadRequestException('Yangi parol kamida 6 ta belgi bo\'lishi kerak');
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user || !user.passwordHash) throw new BadRequestException('Parol o\'rnatilmagan');
+    const valid = await bcrypt.compare(oldPassword, user.passwordHash);
+    if (!valid) throw new UnauthorizedException('Eski parol noto\'g\'ri');
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.update({ where: { id: userId }, data: { passwordHash } });
+    return { success: true };
   }
 
   async getMe(userId: string) {

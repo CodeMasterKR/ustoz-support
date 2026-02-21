@@ -13,11 +13,15 @@ export class StudentsService {
     return this.prisma.student.create({ data: { ...data, userId }, include: { group: true } });
   }
 
-  update(id: string, userId: string, data: { name?: string; groupId?: string }) {
+  update(id: string, userId: string, data: { name?: string; groupId?: string | null }) {
     return this.prisma.student.updateMany({ where: { id, userId }, data });
   }
 
   remove(id: string, userId: string) {
     return this.prisma.student.deleteMany({ where: { id, userId } });
+  }
+
+  clear(userId: string) {
+    return this.prisma.student.deleteMany({ where: { userId } });
   }
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import {
   LayoutDashboard, Clock,
@@ -101,8 +101,13 @@ interface Props {
 // ——— Sidebar ———
 export function Sidebar({ isOpen, mobileOpen, onToggle, onMobileClose }: Props) {
   const navigate = useNavigate()
-  const [studentCount] = useState(() => loadStudents().length)
-  const [groupCount]   = useState(() => loadGroups().length)
+  const [studentCount, setStudentCount] = useState(0)
+  const [groupCount,   setGroupCount]   = useState(0)
+
+  useEffect(() => {
+    loadStudents().then((s) => setStudentCount(s.length))
+    loadGroups().then((g) => setGroupCount(g.length))
+  }, [])
   const user = getCurrentUser()
   const showLabel = isOpen || mobileOpen
 

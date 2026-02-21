@@ -1218,7 +1218,7 @@ export function ResultsPage() {
   const doGenerate = (req: GenerateRequest) => {
     setLoading(true); setError(null)
     generateWithGroq(req)
-      .then((c) => { setContent(c); setActiveTab(req.contentTypes[0] as Tab); saveContent(c) })
+      .then((c) => { setContent(c); setActiveTab(req.contentTypes[0] as Tab); saveContent(c).catch(console.error) })
       .catch((e) => setError(e.message || 'Xatolik'))
       .finally(() => setLoading(false))
   }
@@ -1233,7 +1233,7 @@ export function ResultsPage() {
     setContent((c) => {
       if (!c) return c
       const updated = { ...c, [key]: value }
-      saveContent(updated)
+      saveContent(updated).catch(console.error)
       return updated
     })
     setEditingTab(null)

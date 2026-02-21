@@ -54,8 +54,7 @@ export function RegisterPage() {
     e.preventDefault()
     setError('')
     setLoading(true)
-    await new Promise((r) => setTimeout(r, 600))
-    const result = register(name, email, password)
+    const result = await register(name, email, password)
     setLoading(false)
     if ('error' in result) { setError(result.error); return }
     setSuccess(true)
@@ -70,7 +69,7 @@ export function RegisterPage() {
         const info = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
           headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
         }).then((r) => r.json())
-        const result = loginWithGoogle(info.name ?? info.email, info.email, info.sub)
+        const result = await loginWithGoogle(info.name ?? info.email, info.email, info.sub)
         if ('error' in result) { setError(result.error); setGoogleLoading(false); return }
         setSuccess(true)
         setTimeout(() => navigate('/'), 900)

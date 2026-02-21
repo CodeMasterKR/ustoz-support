@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   User, Mail, Lock, Settings, Monitor, FlaskConical,
@@ -10,9 +10,9 @@ import { clsx } from 'clsx'
 import { getCurrentUser, updateProfile, changePassword, deleteAccount } from '@/utils/auth'
 import { loadSettings, saveSettings, resetSettings, DEFAULTS, type AppSettings } from '@/utils/settings'
 import { applyTheme } from '@/utils/theme'
-import { loadHistory } from '@/utils/storage'
-import { loadStudents } from '@/utils/students'
-import { loadGroups } from '@/utils/groups'
+import { loadHistory, clearHistory } from '@/utils/storage'
+import { loadStudents, clearStudents } from '@/utils/students'
+import { loadGroups, clearGroups } from '@/utils/groups'
 import type { ContentType } from '@/types'
 
 // ——— Toggle switch ———
@@ -147,9 +147,21 @@ export function SettingsPage() {
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
+  // Stats
+  const [historyCount, setHistoryCount] = useState(0)
+  const [studentCount, setStudentCount] = useState(0)
+  const [groupCount,   setGroupCount]   = useState(0)
+
+  useEffect(() => {
+    Promise.all([loadHistory(), loadStudents(), loadGroups()]).then(([h, s, g]) => {
+      setHistoryCount(h.length)
+      setStudentCount(s.length)
+      setGroupCount(g.length)
+    })
+  }, [])
+
   // Profile state
   const [profName,  setProfName]  = useState(user?.name  ?? '')
-  const [profEmail, setProfEmail] = useState(user?.email ?? '')
   const [profSaved, setProfSaved] = useState(false)
 
   // Password state
@@ -173,19 +185,19 @@ export function SettingsPage() {
     showToast("Sozlamalar saqlandi")
   }
 
-  const handleProfileSave = () => {
+  const handleProfileSave = async () => {
     if (!user) return
-    const res = updateProfile(user.id, profName, profEmail)
+    const res = await updateProfile(user.id, profName, user.email)
     if ('error' in res) { showToast(res.error, 'error'); return }
     setProfSaved(true)
     showToast("Profil yangilandi")
     setTimeout(() => setProfSaved(false), 2000)
   }
 
-  const handlePasswordChange = () => {
+  const handlePasswordChange = async () => {
     if (!user) return
     if (!oldPass || !newPass) { showToast("Barcha maydonlarni to'ldiring", 'error'); return }
-    const res = changePassword(user.id, oldPass, newPass)
+    const res = await changePassword(user.id, oldPass, newPass)
     if ('error' in res) { showToast(res.error, 'error'); return }
     setOldPass(''); setNewPass('')
     showToast("Parol muvaffaqiyatli o'zgartirildi")
@@ -197,69 +209,31 @@ export function SettingsPage() {
     showToast("Sozlamalar qayta tiklandi")
   }
 
-  const handleClearHistory = () => {
-    localStorage.removeItem('ustoz_history')
+  const handleClearHistory = async () => {
+    await clearHistory()
+    setHistoryCount(0)
     showToast("Tarix tozalandi")
   }
 
-  const handleClearStudents = () => {
-    localStorage.removeItem('ustoz_students')
+  const handleClearStudents = async () => {
+    await clearStudents()
+    setStudentCount(0)
+    setGroupCount(0)
     showToast("O'quvchilar ro'yxati tozalandi")
   }
 
-  const handleClearGroups = () => {
-    localStorage.removeItem('ustoz_groups')
+  const handleClearGroups = async () => {
+    await clearGroups()
+    setGroupCount(0)
     showToast("Guruhlar tozalandi")
   }
 
-  const handleExport = () => {
-    const data = {
-      settings: loadSettings(),
-      history: JSON.parse(localStorage.getItem('ustoz_history') ?? '[]'),
-      students: JSON.parse(localStorage.getItem('ustoz_students') ?? '[]'),
-      groups: JSON.parse(localStorage.getItem('ustoz_groups') ?? '[]'),
-      exportedAt: new Date().toISOString(),
-    }
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `ustoz-backup-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-    showToast("Ma'lumotlar eksport qilindi")
-  }
-
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      try {
-        const data = JSON.parse(ev.target?.result as string)
-        if (data.history)  localStorage.setItem('ustoz_history',  JSON.stringify(data.history))
-        if (data.students) localStorage.setItem('ustoz_students', JSON.stringify(data.students))
-        if (data.groups)   localStorage.setItem('ustoz_groups',   JSON.stringify(data.groups))
-        if (data.settings) { saveSettings({ ...DEFAULTS, ...data.settings }); setSettings({ ...DEFAULTS, ...data.settings }) }
-        showToast("Ma'lumotlar import qilindi")
-      } catch {
-        showToast("Fayl noto'g'ri formatda", 'error')
-      }
-    }
-    reader.readAsText(file)
-    e.target.value = ''
-  }
-
-  const handleDeleteAccount = () => {
+  const handleDeleteAccount = async () => {
     if (!user) return
     if (!confirm("Hisob o'chirilsinmi? Bu amalni qaytarib bo'lmaydi.")) return
-    deleteAccount(user.id)
+    await deleteAccount(user.id)
     navigate('/login')
   }
-
-  const historyCount  = loadHistory().length
-  const studentCount  = loadStudents().length
-  const groupCount    = loadGroups().length
 
   const navClick = (id: string) => {
     setActive(id)
@@ -378,9 +352,9 @@ export function SettingsPage() {
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
                         type="email"
-                        value={profEmail}
-                        onChange={(e) => setProfEmail(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:border-primary-500 focus:outline-none"
+                        value={user?.email ?? ''}
+                        readOnly
+                        className="w-full pl-9 pr-4 py-2.5 text-sm border-2 border-gray-100 rounded-xl bg-gray-50 text-gray-500 cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -604,7 +578,6 @@ export function SettingsPage() {
                       onChange={(e) => set('testDifficultyHard', Number(e.target.value))}
                       className="w-full accent-red-500" />
                   </div>
-                  {/* Visual bar */}
                   <div className="flex h-3 rounded-full overflow-hidden">
                     <div className="bg-emerald-400 transition-all" style={{ width: `${settings.testDifficultyEasy}%` }} />
                     <div className="bg-amber-400 transition-all" style={{ width: `${settings.testDifficultyMedium}%` }} />
@@ -669,6 +642,41 @@ export function SettingsPage() {
                         <p className="text-sm font-medium mt-0.5 opacity-70">{s.label}</p>
                       </div>
                     ))}
+                  </div>
+                </div>
+              </Section>
+
+              <Section title="Ma'lumotlarni tozalash">
+                <div className="py-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Tarixni tozalash</p>
+                      <p className="text-xs text-gray-400">{historyCount} ta material</p>
+                    </div>
+                    <button onClick={handleClearHistory}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
+                      Tozalash
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">O'quvchilarni tozalash</p>
+                      <p className="text-xs text-gray-400">{studentCount} ta o'quvchi</p>
+                    </div>
+                    <button onClick={handleClearStudents}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
+                      Tozalash
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-gray-700">Guruhlarni tozalash</p>
+                      <p className="text-xs text-gray-400">{groupCount} ta guruh</p>
+                    </div>
+                    <button onClick={handleClearGroups}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 bg-red-50 hover:bg-red-100 transition-colors">
+                      Tozalash
+                    </button>
                   </div>
                 </div>
               </Section>
@@ -792,7 +800,7 @@ export function SettingsPage() {
           )}
 
           {/* Save button at bottom */}
-          {active !== 'profile' && active !== 'account' && active !== 'notifications' && (
+          {active !== 'profile' && active !== 'account' && active !== 'notifications' && active !== 'students' && (
             <div className="flex justify-end pt-2">
               <button
                 onClick={handleSave}

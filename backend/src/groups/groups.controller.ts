@@ -23,6 +23,11 @@ export class GroupsController {
     return this.groups.update(id, req.user.userId, body);
   }
 
+  @Delete('clear')
+  clear(@Request() req) {
+    return this.groups.clear(req.user.userId);
+  }
+
   @Delete(':id')
   remove(@Request() req, @Param('id') id: string) {
     return this.groups.remove(id, req.user.userId);

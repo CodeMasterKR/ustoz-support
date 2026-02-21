@@ -1,3 +1,5 @@
+import { api } from '@/api/client'
+
 export interface Group {
   id: string
   name: string
@@ -5,8 +7,6 @@ export interface Group {
   studentIds: string[]
   createdAt: string
 }
-
-const KEY = 'ustoz_groups'
 
 export const GROUP_COLORS = [
   'bg-violet-500',
@@ -21,49 +21,75 @@ export const GROUP_COLORS = [
   'bg-cyan-500',
 ]
 
-function uid() { return Math.random().toString(36).slice(2, 9) }
+const COLORS_KEY = 'ustoz_group_colors'
 
-export function loadGroups(): Group[] {
+function getStoredColors(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(COLORS_KEY) ?? '{}') } catch { return {} }
+}
+
+function setStoredColor(groupId: string, color: string) {
+  const colors = getStoredColors()
+  colors[groupId] = color
+  localStorage.setItem(COLORS_KEY, JSON.stringify(colors))
+}
+
+interface ApiGroup {
+  id: string
+  name: string
+  createdAt: string
+  students: { id: string }[]
+}
+
+function apiGroupToGroup(g: ApiGroup, index: number): Group {
+  const colors = getStoredColors()
+  let color = colors[g.id]
+  if (!color) {
+    color = GROUP_COLORS[index % GROUP_COLORS.length]
+    setStoredColor(g.id, color)
+  }
+  return {
+    id: g.id,
+    name: g.name,
+    color,
+    studentIds: g.students.map((s) => s.id),
+    createdAt: g.createdAt,
+  }
+}
+
+export async function loadGroups(): Promise<Group[]> {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? 'null') ?? []
-  } catch { return [] }
+    const groups = await api.get<ApiGroup[]>('/groups')
+    return groups.map((g, i) => apiGroupToGroup(g, i))
+  } catch {
+    return []
+  }
 }
 
-function persist(groups: Group[]) {
-  localStorage.setItem(KEY, JSON.stringify(groups))
+export async function addGroup(name: string): Promise<Group> {
+  const g = await api.post<ApiGroup>('/groups', { name: name.trim() })
+  const existing = await loadGroups()
+  return apiGroupToGroup(g, existing.length)
 }
 
-export function addGroup(name: string): Group {
-  const all = loadGroups()
-  const color = GROUP_COLORS[all.length % GROUP_COLORS.length]
-  const g: Group = { id: uid(), name: name.trim(), color, studentIds: [], createdAt: new Date().toISOString() }
-  persist([g, ...all])
-  return g
+export async function deleteGroup(id: string): Promise<void> {
+  await api.delete(`/groups/${id}`)
+  const colors = getStoredColors()
+  delete colors[id]
+  localStorage.setItem(COLORS_KEY, JSON.stringify(colors))
 }
 
-export function deleteGroup(id: string): void {
-  persist(loadGroups().filter((g) => g.id !== id))
-}
-
-export function updateGroup(id: string, name: string): void {
-  persist(loadGroups().map((g) => (g.id === id ? { ...g, name: name.trim() } : g)))
+export async function updateGroup(id: string, name: string): Promise<void> {
+  await api.patch(`/groups/${id}`, { name: name.trim() })
 }
 
 export function setGroupColor(id: string, color: string): void {
-  persist(loadGroups().map((g) => (g.id === id ? { ...g, color } : g)))
+  setStoredColor(id, color)
 }
 
-export function toggleStudentInGroup(groupId: string, studentId: string): void {
-  persist(
-    loadGroups().map((g) => {
-      if (g.id !== groupId) return g
-      const has = g.studentIds.includes(studentId)
-      return {
-        ...g,
-        studentIds: has
-          ? g.studentIds.filter((id) => id !== studentId)
-          : [...g.studentIds, studentId],
-      }
-    }),
-  )
+export async function toggleStudentInGroup(groupId: string, studentId: string, isCurrentlyInGroup: boolean): Promise<void> {
+  await api.patch(`/students/${studentId}`, { groupId: isCurrentlyInGroup ? null : groupId })
+}
+
+export async function clearGroups(): Promise<void> {
+  await api.delete('/groups/clear')
 }
