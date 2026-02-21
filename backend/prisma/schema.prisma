@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String?
+  googleId     String?  @unique
+  avatar       String?
+  refreshToken String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  histories History[]
+  students  Student[]
+  groups    Group[]
+
+  @@map("users")
+}
+
+model History {
+  id        String   @id @default(cuid())
+  topic     String
+  language  String   @default("uz")
+  types     String[]
+  result    Json
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("histories")
+}
+
+model Group {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  userId   String
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  students Student[]
+
+  @@index([userId])
+  @@map("groups")
+}
+
+model Student {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  userId  String
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@map("students")
+}
