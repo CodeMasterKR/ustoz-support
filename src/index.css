@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ═══════════════════════════════════════════════════
+   DESIGN TOKENS — CSS Custom Properties
+   ═══════════════════════════════════════════════════ */
+:root {
+  --bg-page: #f7f8fa;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #f3f4f6;
+  --border: #e5e7eb;
+  --border-light: #f0f1f3;
+  --text-primary: #111827;
+  --text-secondary: #4b5563;
+  --text-muted: #9ca3af;
+
+  --primary: #0a9090;
+  --primary-hover: #088080;
+  --primary-light: #eaf6f6;
+  --primary-ring: rgba(10, 144, 144, 0.15);
+
+  --sidebar-bg: #111827;
+  --sidebar-active: #0a9090;
+  --sidebar-hover: #1f2937;
+  --sidebar-text: #94a3b8;
+  --sidebar-text-active: #ffffff;
+  --sidebar-border: #1f2937;
+
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --danger-light: #fef2f2;
+  --success: #059669;
+  --success-light: #ecfdf5;
+  --warning: #d97706;
+  --warning-light: #fffbeb;
+}
+
+.dark {
+  --bg-page: #0d1017;
+  --bg-surface: #171b26;
+  --bg-surface-hover: #1f2433;
+  --border: #282e3e;
+  --border-light: #1f2433;
+  --text-primary: #e4e7ec;
+  --text-secondary: #8b93a6;
+  --text-muted: #515b6e;
+
+  --primary: #0cbaba;
+  --primary-hover: #0a9090;
+  --primary-light: rgba(10, 144, 144, 0.1);
+  --primary-ring: rgba(12, 186, 186, 0.2);
+
+  --sidebar-bg: #0a0c12;
+  --sidebar-active: #0a9090;
+  --sidebar-hover: #141824;
+  --sidebar-text: #6b7590;
+  --sidebar-text-active: #e4e7ec;
+  --sidebar-border: #1a1f2e;
+
+  --danger: #ef4444;
+  --danger-hover: #dc2626;
+  --danger-light: rgba(239, 68, 68, 0.1);
+  --success: #10b981;
+  --success-light: rgba(16, 185, 129, 0.1);
+  --warning: #f59e0b;
+  --warning-light: rgba(245, 158, 11, 0.1);
+}
+
+/* ═══════════════════════════════════════════════════
+   BASE
+   ═══════════════════════════════════════════════════ */
+@layer base {
+  *, *::before, *::after { box-sizing: border-box; }
+  html {
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    font-size: 16px;
+  }
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    margin: 0;
+    font-size: 15px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   COMPONENTS
+   ═══════════════════════════════════════════════════ */
+@layer components {
+  .card {
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 1rem;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  }
+  .dark .card {
+    box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  }
+
+  .field {
+    width: 100%;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 0.75rem;
+    padding: 0.625rem 1rem;
+    font-size: 15px;
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .field::placeholder {
+    color: var(--text-muted);
+  }
+  .field:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-ring);
+  }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 9999px; }
+
+/* Loading dots */
+.dot { animation: dotAnim 1.2s infinite ease-in-out both; }
+.dot:nth-child(1) { animation-delay: -0.24s; }
+.dot:nth-child(2) { animation-delay: -0.12s; }
+@keyframes dotAnim {
+  0%, 80%, 100% { transform: scale(0.5); opacity: 0.3; }
+  40% { transform: scale(1); opacity: 1; }
+}
+
+/* Print */
+@media print {
+  body { background: white !important; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+}
+
+/* ═══════════════════════════════════════════════════
+   DARK MODE — Tailwind class overrides
+   (maps standard Tailwind gray utilities → dark tokens)
+   ═══════════════════════════════════════════════════ */
+
+/* --- Backgrounds --- */
+.dark .bg-white        { background-color: var(--bg-surface) !important; }
+.dark .bg-gray-50,
+.dark .bg-slate-50     { background-color: var(--bg-surface-hover) !important; }
+.dark .bg-gray-100,
+.dark .bg-slate-100    { background-color: var(--bg-page) !important; }
+.dark .bg-gray-200,
+.dark .bg-slate-200    { background-color: var(--border) !important; }
+
+/* --- Borders --- */
+.dark .border-gray-100,
+.dark .border-slate-100 { border-color: var(--border-light) !important; }
+.dark .border-gray-200,
+.dark .border-slate-200 { border-color: var(--border) !important; }
+.dark .border-gray-300,
+.dark .border-slate-300 { border-color: #3d4559 !important; }
+
+/* --- Text --- */
+.dark .text-gray-900,
+.dark .text-slate-900  { color: var(--text-primary); }
+.dark .text-gray-800,
+.dark .text-slate-800  { color: #d1d5de; }
+.dark .text-gray-700,
+.dark .text-slate-700  { color: #b8bfce; }
+.dark .text-gray-600,
+.dark .text-slate-600  { color: var(--text-secondary); }
+.dark .text-gray-500,
+.dark .text-slate-500  { color: #6b7590; }
+.dark .text-gray-400,
+.dark .text-slate-400  { color: var(--text-muted); }
+
+/* --- Hover bg --- */
+.dark .hover\:bg-gray-50:hover,
+.dark .hover\:bg-slate-50:hover   { background-color: var(--bg-surface-hover) !important; }
+.dark .hover\:bg-gray-100:hover,
+.dark .hover\:bg-slate-100:hover  { background-color: var(--border-light) !important; }
+
+/* --- Dividers --- */
+.dark .divide-gray-100 > * + *,
+.dark .divide-slate-100 > * + *  { border-color: var(--border-light); }
+.dark .divide-gray-200 > * + *,
+.dark .divide-slate-200 > * + *  { border-color: var(--border); }
+
+/* --- Primary overrides in dark --- */
+.dark .bg-primary-50   { background-color: var(--primary-light) !important; }
+.dark .bg-primary-100  { background-color: var(--primary-light) !important; }
+.dark .text-primary-700 { color: #0cbaba; }
+.dark .text-primary-600 { color: #0cbaba; }
+.dark .border-primary-200 { border-color: rgba(12,186,186,0.2) !important; }
+
+/* --- Red / danger bg overrides --- */
+.dark .bg-red-50       { background-color: var(--danger-light) !important; }
+.dark .border-red-200  { border-color: rgba(239,68,68,0.2) !important; }
+.dark .bg-emerald-50   { background-color: var(--success-light) !important; }
+.dark .border-emerald-200 { border-color: rgba(16,185,129,0.2) !important; }
